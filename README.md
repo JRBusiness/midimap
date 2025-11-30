@@ -1,4 +1,5 @@
 # MIDI to Keyboard Mapper
+<img width="951" height="882" alt="image" src="https://github.com/user-attachments/assets/56f1a5ee-62ab-44d2-91e2-21096fd7305f" />
 
 A cross-platform application that maps MIDI keyboard input to computer keyboard keys, allowing you to use your MIDI controller as a keyboard input device. Perfect for gaming, music production, and other applications where you want MIDI control.
 
