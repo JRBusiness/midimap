@@ -1,104 +1,153 @@
-# MIDI to Keyboard Mapper
+# MidiMap
 
-A cross-platform application that maps MIDI keyboard input to computer keyboard keys, allowing you to use your MIDI controller as a keyboard input device. Perfect for gaming, music production, and other applications where you want MIDI control.
-
-**Supports:** Windows, macOS, and Linux
+A cross-platform desktop application that bridges MIDI input with computer keyboard output. Originally designed for rhythm game integration, MidiMap converts MIDI notes to keystrokes and includes AI-powered audio-to-MIDI transcription.
 
 ## Features
 
-- **Interactive GUI** - Easy-to-use graphical interface for mapping MIDI notes to keyboard keys
-- **Hotkey Support** - Assign single keys or key combinations (e.g., `ctrl+c`, `shift+f1`)
-- **Multiple Profiles** - Create and switch between different mapping profiles
-- **Real-time MIDI Detection** - See MIDI notes as you play them
-- **Game Compatible** - Uses Windows API SendInput for compatibility with games and applications
-- **Profile Management** - Create, rename, delete, and switch between profiles
+### MIDI to Keyboard Mapping
+- Map any MIDI note (0-127) to keyboard keys or key combinations
+- DirectInput support for game compatibility (Windows)
+- Real-time MIDI note detection and visualization
+- Multiple mapping profiles with easy switching
+
+### MIDI File Playback
+- Load and play MIDI files with automatic keystroke output
+- Adjustable playback speed (0.25x - 2x)
+- Note range adjustment to fit instrument constraints (e.g., 36-note range)
+- Optional humanization with configurable misclick simulation
+
+### Audio to MIDI Conversion
+- AI-powered piano converter using ONNX runtime
+- Supports MP3, WAV, FLAC, OGG, M4A, and WMA formats
+- GPU acceleration via DirectML (Windows) with CPU fallback
+- Batch conversion support
+
+### YouTube Integration
+- Download YouTube videos as MP3
+- One-click download and convert to MIDI workflow
+- Automatic video title sanitization
 
 ## Installation
 
-1. **Install Python** (3.7 or higher)
-   - Download from [python.org](https://www.python.org/downloads/)
+### Prerequisites
+- Python 3.8 or higher
+- FFmpeg (required for audio conversion)
 
-2. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Quick Start
 
-   Required packages:
-   - `mido` - MIDI input/output handling
-   - `python-rtmidi` - MIDI backend for mido
-   - `pynput` - Keyboard input capture (for GUI and macOS/Linux fallback)
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/midimap.git
+cd midimap
+```
 
-3. **Platform-Specific Requirements**
+2. Create a virtual environment (recommended):
+```bash
+python -m venv .venv
 
-   **Linux:**
-   - Install `xdotool` for best results (recommended):
-     ```bash
-     sudo apt install xdotool    # Debian/Ubuntu
-     sudo yum install xdotool    # RedHat/CentOS
-     ```
-   - Alternatively, `pynput` can be used but requires X11
+# Windows
+.venv\Scripts\activate
 
-   **macOS:**
-   - No additional system packages required
-   - Uses `pynput` by default, falls back to AppleScript if needed
+# macOS/Linux
+source .venv/bin/activate
+```
 
-   **Windows:**
-   - No additional system packages required
-   - Uses Windows API directly
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Download the AI model:
+   - Place `model.onnx` in the `models/` directory
+   - The model file is required for audio-to-MIDI conversion
+
+5. Run the application:
+```bash
+python main.py --gui
+```
+
+Or on Windows, double-click `run_gui.bat`.
+
+### FFmpeg Installation
+
+FFmpeg is required for audio format conversion.
+
+**Windows:**
+```bash
+winget install ffmpeg
+```
+Or download from [ffmpeg.org](https://ffmpeg.org/download.html) and place `ffmpeg.exe` in the project directory.
+
+**macOS:**
+```bash
+brew install ffmpeg
+```
+
+**Linux:**
+```bash
+sudo apt install ffmpeg  # Debian/Ubuntu
+sudo dnf install ffmpeg  # Fedora
+```
 
 ## Usage
 
-### GUI Mode (Recommended)
+### GUI Mode
 
-1. **Launch the GUI**
-   ```bash
-   python gui.py
-   ```
-   Or double-click `run_gui.bat` on Windows
+Launch the GUI with:
+```bash
+python main.py --gui
+```
 
-2. **Connect Your MIDI Device**
-   - Select your MIDI input port from the dropdown
-   - Click "Connect"
+#### Mapping MIDI Notes
 
-3. **Assign Keys**
-   - Play a MIDI note (or enter the note number manually)
-   - Click "Capture Key/Combo" and press the keyboard key you want to assign
-   - Click "Assign" to save the mapping
+1. Connect your MIDI device and select it from the dropdown
+2. Click **Connect** to start listening
+3. Play a note on your MIDI device or enter the note number manually
+4. Click **Capture Key/Combo** and press the desired keyboard key
+5. Click **Assign** to save the mapping
+6. Enable **MIDI to Keyboard Mapping** checkbox to activate
 
-4. **Enable Mapping**
-   - Check "Enable MIDI to Keyboard Mapping" to activate
-   - Play your MIDI keyboard - keys will be sent to your computer
+#### Playing MIDI Files
 
-5. **Manage Profiles**
-   - Use the Profile dropdown to switch between profiles
-   - Click "New" to create a new profile
-   - Click "Rename" or "Delete" to manage profiles
+1. Click **Browse...** in the MIDI File Player section
+2. Select a MIDI file (.mid)
+3. Adjust playback speed if needed
+4. Click **Play** to start automatic keystroke output
+
+#### Converting Audio to MIDI
+
+1. Click **Browse Audio...** and select an audio file
+2. Choose an output folder for MIDI files
+3. Click **Convert & Load** to convert and immediately load for playback
+
+#### YouTube to MIDI
+
+1. Paste a YouTube URL in the text field
+2. Click **Download & Convert** for a one-click workflow
+3. The MP3 will be saved to `downloads/` and converted to MIDI
 
 ### Command Line Mode
 
-1. **List Available MIDI Ports**
-   ```bash
-   python main.py --list-ports
-   ```
+```bash
+# List available MIDI ports
+python main.py --list-ports
 
-2. **Run with Default Profile**
-   ```bash
-   python main.py
-   ```
+# Run with default profile
+python main.py
 
-3. **Run with Specific Profile**
-   ```bash
-   python main.py --profile "ProfileName"
-   ```
+# Run with a specific profile
+python main.py --profile "MyProfile"
 
-4. **Use Custom Config File**
-   ```bash
-   python main.py --config "custom_config.json"
-   ```
+# Use custom config file
+python main.py --config "custom_config.json"
+
+# Launch GUI
+python main.py --gui
+```
 
 ## Configuration
 
-Configuration is stored in `config.json` with the following structure:
+Configuration is stored in `config.json`:
 
 ```json
 {
@@ -116,104 +165,118 @@ Configuration is stored in `config.json` with the following structure:
 }
 ```
 
-### MIDI Note Numbers
+### Key Mapping Format
 
-MIDI notes range from 0-127. Common reference:
-- C4 (Middle C) = 60
-- C3 = 48
-- C5 = 72
+| Type | Examples |
+|------|----------|
+| Single key | `a`, `z`, `space`, `enter`, `f1` |
+| With modifier | `ctrl+c`, `shift+f1`, `alt+tab` |
+| Multiple modifiers | `ctrl+shift+a`, `ctrl+alt+delete` |
 
-### Keyboard Key Formats
+### MIDI Note Reference
 
-- **Single keys**: `a`, `z`, `space`, `enter`, `f1`
-- **Key combinations**: `ctrl+c`, `shift+f1`, `ctrl+alt+delete`
-- **Supported modifiers**: `ctrl`, `shift`, `alt`
+| Note | MIDI Number |
+|------|-------------|
+| C3 | 48 |
+| C4 (Middle C) | 60 |
+| C5 | 72 |
 
-### Special Keys
+## Project Structure
 
-Supported special keys:
-- Arrow keys: `up`, `down`, `left`, `right`
-- Function keys: `f1` through `f12`
-- Navigation: `home`, `end`, `page_up`, `page_down`
-- Editing: `backspace`, `delete`, `insert`, `tab`, `enter`, `esc`
+```
+midimap/
+├── main.py                  # Entry point
+├── src/                     # Source code
+│   ├── __init__.py
+│   ├── mapper.py            # Core MIDI to keyboard mapper
+│   ├── keyboard.py          # Cross-platform keyboard backend
+│   ├── gui.py               # Tkinter GUI application
+│   └── converters/          # Conversion modules
+│       ├── __init__.py
+│       ├── audio.py         # Audio to MIDI conversion
+│       ├── inference.py     # AI transcription engine
+│       └── youtube.py       # YouTube downloader
+├── utils/                   # Utility modules
+│   ├── __init__.py
+│   ├── audio.py             # Audio processing utilities
+│   ├── config.py            # Configuration constants
+│   └── vad.py               # Voice activity detection
+├── models/                  # AI models
+│   └── model.onnx           # Piano converter model
+├── config.json              # User configuration
+├── requirements.txt         # Python dependencies
+├── pyproject.toml           # Package configuration
+├── run_gui.bat              # Windows launcher
+├── run_gui.sh               # Linux/Mac launcher
+├── LICENSE                  # MIT license
+├── downloads/               # YouTube downloads (auto-created)
+└── midi_output/             # Converted MIDI files (auto-created)
+```
+
+## Platform Support
+
+| Platform | Keyboard Backend | Status |
+|----------|-----------------|--------|
+| Windows | DirectInput (SendInput API) | Full support |
+| macOS | pynput / AppleScript | Supported |
+| Linux | xdotool / pynput | Supported |
+
+### Platform Notes
+
+**Windows:**
+- Uses DirectInput scan codes for game compatibility
+- May require administrator privileges for some games
+- GPU acceleration available via DirectML
+
+**macOS:**
+- Requires accessibility permissions in System Preferences
+- Some applications may block simulated input
+
+**Linux:**
+- Install xdotool for best compatibility: `sudo apt install xdotool`
+- Requires X11 (limited Wayland support via XWayland)
 
 ## Troubleshooting
 
 ### Keys Not Working in Games
 
-1. **Run as Administrator**
-   - Right-click Command Prompt/Python and select "Run as administrator"
-   - Many games require administrator privileges for simulated input
-
-2. **Check Game Settings**
-   - Some games block simulated input for security
-   - Try in a different application first (like Notepad) to verify it works
+1. Run as administrator (Windows)
+2. Verify keys work in a text editor first
+3. Some games require specific DirectInput settings
 
 ### MIDI Device Not Detected
 
-1. **Check MIDI Port**
-   - Click "Refresh" in the GUI
-   - Ensure your MIDI device is connected and powered on
-   - Try disconnecting and reconnecting the device
+1. Click **Refresh** in the GUI
+2. Ensure device is connected and powered on
+3. Install manufacturer drivers if needed
 
-2. **Install MIDI Drivers**
-   - Some MIDI devices require specific drivers
-   - Check your device manufacturer's website
+### Audio Conversion Fails
 
-### Mapping Not Working
+1. Verify FFmpeg is installed: `ffmpeg -version`
+2. Check that the AI model exists in `models/model.onnx`
+3. Try converting to WAV format first for problematic files
 
-1. **Check Mapping is Enabled**
-   - Ensure "Enable MIDI to Keyboard Mapping" checkbox is checked
+### YouTube Download Fails
 
-2. **Verify MIDI Connection**
-   - Check the status shows "Connected" (green)
-   - Play a note and verify it appears in "Last detected notes"
+1. Update yt-dlp: `pip install --upgrade yt-dlp`
+2. Check video is not private or region-locked
+3. Verify FFmpeg is available for audio extraction
 
-3. **Check Console Output**
-   - Look for error messages or warnings
-   - Verify keys are being assigned correctly
+## Dependencies
 
-
-## Technical Details
-
-- **Keyboard Input**:
-  - **Windows**: Uses Windows API `SendInput` function for low-level keyboard simulation
-  - **macOS**: Uses `pynput` library (fallback to AppleScript)
-  - **Linux**: Uses `xdotool` (fallback to `pynput` via X11)
-- **MIDI Input**: Uses `mido` library with `python-rtmidi` backend
-- **Key Capture**: Uses `pynput` for capturing keyboard input in the GUI
-- **Cross-Platform**: Automatic platform detection and backend selection
-
-## Platform-Specific Notes
-
-### Windows
-- Uses Windows API `SendInput` for low-level keyboard simulation
-- Works with most games and applications
-- May require administrator privileges for some games
-
-### macOS
-- Uses `pynput` library (primary method)
-- Falls back to AppleScript if `pynput` is not available
-- May require accessibility permissions in System Preferences > Security & Privacy
-
-### Linux
-- Uses `xdotool` if available (recommended, no root required)
-- Falls back to `pynput` if `xdotool` is not installed
-- Requires X11 environment (does not work with Wayland without XWayland)
-- Some applications may require root privileges
-
-## Limitations
-
-- Some applications may block simulated input for security reasons
-- Linux: Requires X11 (Wayland support limited)
-- macOS: May require accessibility permissions
-- Windows: May require administrator privileges for some games
+| Package | Purpose |
+|---------|---------|
+| mido | MIDI input/output handling |
+| pynput | Keyboard input capture |
+| librosa | Audio loading and processing |
+| onnxruntime | AI model inference |
+| yt-dlp | YouTube video downloading |
+| numpy | Numerical operations |
 
 ## License
-                                                                                                                                                                                                                                                        
-Free to use and modify.
+
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Contributing
 
-Feel free to submit issues or pull requests if you find bugs or want to add features.
-
+Contributions are welcome. Please open an issue to discuss proposed changes before submitting a pull request.

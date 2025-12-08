@@ -1,12 +1,24 @@
 @echo off
 cd /d "%~dp0"
 
-REM Try to use virtual environment Python if it exists
-if exist "Scripts\python.exe" (
+REM MidiMap GUI Launcher for Windows
+
+REM Try to find Python in various locations
+if exist ".venv\Scripts\python.exe" (
+    set PYTHON_EXE=.venv\Scripts\python.exe
+    echo Using .venv Python
+) else if exist "..\.venv\Scripts\python.exe" (
+    set PYTHON_EXE=..\.venv\Scripts\python.exe
+    echo Using parent .venv Python
+) else if exist "Scripts\python.exe" (
     set PYTHON_EXE=Scripts\python.exe
+    echo Using Scripts Python
 ) else (
     set PYTHON_EXE=python
+    echo Using system Python
 )
+
+echo Python: %PYTHON_EXE%
 
 REM Check if dependencies are installed
 %PYTHON_EXE% -c "import mido" 2>nul
@@ -19,17 +31,14 @@ if errorlevel 1 (
     )
 )
 
-REM Run the GUI
-%PYTHON_EXE% gui.py
+REM Run the GUI via main.py
+%PYTHON_EXE% main.py --gui
 
 if errorlevel 1 (
     echo.
     echo Error: Failed to run GUI.
     echo.
     echo Make sure dependencies are installed:
-    echo   %PYTHON_EXE% -m pip install mido pynput
-    echo.
-    echo Note: python-rtmidi is optional but recommended for better MIDI support.
-    echo On Python 3.13, you may need to use Python 3.12 or install python-rtmidi manually.
+    echo   %PYTHON_EXE% -m pip install -r requirements.txt
     pause
 )

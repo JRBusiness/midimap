@@ -22,7 +22,22 @@
         "77": "r",
         "79": "t",
         "81": "y",
-        "83": "u"
+        "83": "u",
+        "51": "ctrl+c",
+        "49": "shift+z",
+        "54": "shift+v",
+        "56": "shift+b",
+        "58": "ctrl+m",
+        "61": "shift+a",
+        "63": "ctrl+d",
+        "66": "shift+f",
+        "68": "shift+g",
+        "70": "ctrl+j",
+        "73": "shift+q",
+        "75": "ctrl+e",
+        "78": "shift+r",
+        "80": "shift+t",
+        "82": "ctrl+u"
       },
       "velocity_threshold": 0
     },

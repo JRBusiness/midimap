@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
 """
-Cross-platform keyboard input backend
-Supports Windows, macOS, and Linux
+Cross-platform keyboard input backend.
+Supports Windows, macOS, and Linux.
 """
 
 import platform
 import subprocess
-import sys
 from typing import Optional
 
 SYSTEM = platform.system().lower()
@@ -16,7 +14,7 @@ IS_LINUX = SYSTEM == 'linux'
 
 
 class PlatformKeyboard:
-    """Cross-platform keyboard input handler"""
+    """Cross-platform keyboard input handler."""
     
     def __init__(self):
         if IS_WINDOWS:
@@ -29,48 +27,56 @@ class PlatformKeyboard:
             raise RuntimeError(f"Unsupported platform: {SYSTEM}")
     
     def press_key(self, key: str):
-        """Press a key"""
+        """Press a key."""
         self.impl.press_key(key)
     
     def release_key(self, key: str):
-        """Release a key"""
+        """Release a key."""
         self.impl.release_key(key)
     
     def press_combination(self, modifiers: list, key: Optional[str] = None):
-        """Press a key combination"""
+        """Press a key combination."""
         self.impl.press_combination(modifiers, key)
 
 
 class _WindowsKeyboard:
-    """Windows implementation using SendInput API"""
+    """Windows implementation using DirectInput with scan codes for game compatibility."""
     
     def __init__(self):
-        try:
-            import ctypes
-            from ctypes import wintypes
-        except ImportError:
-            raise RuntimeError("ctypes module not available (should be built-in)")
+        import ctypes
         
         self.ctypes = ctypes
-        self.wintypes = wintypes
         
-        # Windows constants
+        self.KEYEVENTF_SCANCODE = 0x0008
         self.KEYEVENTF_KEYUP = 0x0002
+        self.KEYEVENTF_EXTENDEDKEY = 0x0001
         self.INPUT_KEYBOARD = 1
         
-        # Virtual key codes
-        self.VK_CODE = {
-            'backspace': 0x08, 'tab': 0x09, 'enter': 0x0D, 'shift': 0x10,
-            'ctrl': 0x11, 'alt': 0x12, 'pause': 0x13, 'esc': 0x1B,
-            'space': 0x20, 'end': 0x23, 'home': 0x24, 'left': 0x25,
-            'up': 0x26, 'right': 0x27, 'down': 0x28, 'delete': 0x2E,
-            'insert': 0x2D, 'f1': 0x70, 'f2': 0x71, 'f3': 0x72, 'f4': 0x73,
-            'f5': 0x74, 'f6': 0x75, 'f7': 0x76, 'f8': 0x77, 'f9': 0x78,
-            'f10': 0x79, 'f11': 0x7A, 'f12': 0x7B,
-            'page_up': 0x21, 'page_down': 0x22,
+        self.SCAN_CODES = {
+            'a': 0x1E, 'b': 0x30, 'c': 0x2E, 'd': 0x20, 'e': 0x12, 'f': 0x21,
+            'g': 0x22, 'h': 0x23, 'i': 0x17, 'j': 0x24, 'k': 0x25, 'l': 0x26,
+            'm': 0x32, 'n': 0x31, 'o': 0x18, 'p': 0x19, 'q': 0x10, 'r': 0x13,
+            's': 0x1F, 't': 0x14, 'u': 0x16, 'v': 0x2F, 'w': 0x11, 'x': 0x2D,
+            'y': 0x15, 'z': 0x2C,
+            '1': 0x02, '2': 0x03, '3': 0x04, '4': 0x05, '5': 0x06,
+            '6': 0x07, '7': 0x08, '8': 0x09, '9': 0x0A, '0': 0x0B,
+            'f1': 0x3B, 'f2': 0x3C, 'f3': 0x3D, 'f4': 0x3E, 'f5': 0x3F,
+            'f6': 0x40, 'f7': 0x41, 'f8': 0x42, 'f9': 0x43, 'f10': 0x44,
+            'f11': 0x57, 'f12': 0x58,
+            'esc': 0x01, 'tab': 0x0F, 'space': 0x39, 'enter': 0x1C,
+            'backspace': 0x0E, 'shift': 0x2A, 'ctrl': 0x1D, 'alt': 0x38,
+            'up': 0x48, 'down': 0x50, 'left': 0x4B, 'right': 0x4D,
+            'insert': 0x52, 'delete': 0x53, 'home': 0x47, 'end': 0x4F,
+            'page_up': 0x49, 'page_down': 0x51,
+            '-': 0x0C, '=': 0x0D, '[': 0x1A, ']': 0x1B, '\\': 0x2B,
+            ';': 0x27, "'": 0x28, '`': 0x29, ',': 0x33, '.': 0x34, '/': 0x35,
         }
         
-        # Setup Windows structures
+        self.EXTENDED_KEYS = {
+            'up', 'down', 'left', 'right', 'insert', 'delete', 
+            'home', 'end', 'page_up', 'page_down'
+        }
+        
         ULONG_PTR = ctypes.c_ulonglong if ctypes.sizeof(ctypes.c_void_p) == 8 else ctypes.c_ulong
         
         class KEYBDINPUT(ctypes.Structure):
@@ -79,7 +85,7 @@ class _WindowsKeyboard:
                 ("wScan", ctypes.c_ushort),
                 ("dwFlags", ctypes.c_ulong),
                 ("time", ctypes.c_ulong),
-                ("dwExtraInfo", ctypes.POINTER(ULONG_PTR))
+                ("dwExtraInfo", ULONG_PTR)
             ]
         
         class INPUT_UNION(ctypes.Union):
@@ -95,53 +101,36 @@ class _WindowsKeyboard:
         self.INPUT_UNION = INPUT_UNION
         self.INPUT = INPUT
         
-        # Get Windows API functions
         user32 = ctypes.windll.user32
-        self.MapVirtualKeyW = user32.MapVirtualKeyW
         self.SendInput = user32.SendInput
         self.SendInput.argtypes = [ctypes.c_uint, ctypes.POINTER(INPUT), ctypes.c_int]
         self.SendInput.restype = ctypes.c_uint
         
-        self.VkKeyScanW = user32.VkKeyScanW
-        self.VkKeyScanW.argtypes = [ctypes.c_wchar]
-        self.VkKeyScanW.restype = wintypes.SHORT
-    
-    def _get_vk_code(self, key: str) -> int:
-        """Get virtual key code for a key"""
+    def _get_scan_code(self, key: str) -> tuple:
+        """Get scan code and extended flag for a key."""
         if not key:
-            return 0
+            return 0, False
         
         key_lower = key.lower()
+        scan_code = self.SCAN_CODES.get(key_lower, 0)
+        is_extended = key_lower in self.EXTENDED_KEYS
         
-        if key_lower in self.VK_CODE:
-            return self.VK_CODE[key_lower]
-        
-        if len(key) == 1:
-            char = key.upper() if key.islower() else key
-            try:
-                vk_scan = self.VkKeyScanW(char)
-                vk_code = vk_scan & 0xFF
-                if vk_code != 0xFF and vk_code != 0:
-                    return vk_code
-            except Exception as e:
-                print(f"Error getting VK code for '{key}': {e}")
-                return 0
-        
-        return 0
+        return scan_code, is_extended
     
-    def _send_key_event(self, vk_code: int, key_up: bool = False):
-        """Send a single key event using SendInput"""
-        flags = self.KEYEVENTF_KEYUP if key_up else 0
-        
-        scan_code = self.MapVirtualKeyW(vk_code, 0)
-        extra = self.ctypes.c_ulonglong(0) if self.ctypes.sizeof(self.ctypes.c_void_p) == 8 else self.ctypes.c_ulong(0)
+    def _send_key_event(self, scan_code: int, is_extended: bool, key_up: bool = False):
+        """Send a key event using DirectInput scan codes."""
+        flags = self.KEYEVENTF_SCANCODE
+        if key_up:
+            flags |= self.KEYEVENTF_KEYUP
+        if is_extended:
+            flags |= self.KEYEVENTF_EXTENDEDKEY
         
         ki = self.KEYBDINPUT(
-            wVk=self.ctypes.c_ushort(vk_code),
+            wVk=0,
             wScan=self.ctypes.c_ushort(scan_code),
             dwFlags=self.ctypes.c_ulong(flags),
-            time=self.ctypes.c_ulong(0),
-            dwExtraInfo=self.ctypes.pointer(extra)
+            time=0,
+            dwExtraInfo=0
         )
         
         union = self.INPUT_UNION(ki=ki)
@@ -151,25 +140,25 @@ class _WindowsKeyboard:
         )
         
         is_64bit = self.ctypes.sizeof(self.ctypes.c_void_p) == 8
-        expected_size = 40 if is_64bit else 28
+        input_size = 40 if is_64bit else 28
         
-        result = self.SendInput(1, self.ctypes.byref(x), expected_size)
+        result = self.SendInput(1, self.ctypes.byref(x), input_size)
         return result == 1
     
     def press_key(self, key: str):
-        """Press a key"""
-        vk_code = self._get_vk_code(key)
-        if vk_code:
-            self._send_key_event(vk_code, key_up=False)
+        """Press a key using DirectInput."""
+        scan_code, is_extended = self._get_scan_code(key)
+        if scan_code:
+            self._send_key_event(scan_code, is_extended, key_up=False)
     
     def release_key(self, key: str):
-        """Release a key"""
-        vk_code = self._get_vk_code(key)
-        if vk_code:
-            self._send_key_event(vk_code, key_up=True)
+        """Release a key using DirectInput."""
+        scan_code, is_extended = self._get_scan_code(key)
+        if scan_code:
+            self._send_key_event(scan_code, is_extended, key_up=True)
     
     def press_combination(self, modifiers: list, key: Optional[str] = None):
-        """Press a key combination"""
+        """Press a key combination using DirectInput."""
         import time
         for mod in modifiers:
             self.press_key(mod)
@@ -183,9 +172,8 @@ class _WindowsKeyboard:
 
 
 class _MacKeyboard:
-    """macOS implementation using AppleScript"""
+    """macOS implementation using pynput/AppleScript."""
     
-    # macOS key codes (CGKeyCode)
     KEY_CODES = {
         'a': 0, 'b': 11, 'c': 8, 'd': 2, 'e': 14, 'f': 3, 'g': 5, 'h': 4,
         'i': 34, 'j': 38, 'k': 40, 'l': 37, 'm': 46, 'n': 45, 'o': 31,
@@ -201,7 +189,6 @@ class _MacKeyboard:
     }
     
     def __init__(self):
-        # Try to use pynput for better reliability
         try:
             from pynput.keyboard import Key, Controller
             self.use_pynput = True
@@ -212,7 +199,7 @@ class _MacKeyboard:
             print("Warning: pynput not available, using AppleScript (less reliable)")
     
     def _get_key_name(self, key: str) -> Optional[str]:
-        """Convert key string to pynput Key or character"""
+        """Convert key string to pynput Key or character."""
         if self.use_pynput:
             key_map = {
                 'space': self.Key.space, 'enter': self.Key.enter, 'tab': self.Key.tab,
@@ -234,7 +221,7 @@ class _MacKeyboard:
         return None
     
     def _send_applescript(self, key_code: int, key_down: bool):
-        """Send key event using AppleScript"""
+        """Send key event using AppleScript."""
         action = "key down" if key_down else "key up"
         script = f'''
         tell application "System Events"
@@ -247,7 +234,7 @@ class _MacKeyboard:
             pass
     
     def press_key(self, key: str):
-        """Press a key"""
+        """Press a key."""
         if self.use_pynput:
             key_obj = self._get_key_name(key)
             if key_obj:
@@ -262,7 +249,7 @@ class _MacKeyboard:
                 self._send_applescript(self.KEY_CODES[key_lower], True)
     
     def release_key(self, key: str):
-        """Release a key"""
+        """Release a key."""
         if self.use_pynput:
             key_obj = self._get_key_name(key)
             if key_obj:
@@ -277,7 +264,7 @@ class _MacKeyboard:
                 self._send_applescript(self.KEY_CODES[key_lower], False)
     
     def press_combination(self, modifiers: list, key: Optional[str] = None):
-        """Press a key combination"""
+        """Press a key combination."""
         import time
         if self.use_pynput:
             mod_map = {
@@ -301,7 +288,6 @@ class _MacKeyboard:
                 if mod:
                     self.keyboard.release(mod)
         else:
-            # Fallback to individual key presses
             for mod in modifiers:
                 self.press_key(mod)
             if key:
@@ -314,14 +300,12 @@ class _MacKeyboard:
 
 
 class _LinuxKeyboard:
-    """Linux implementation using xdotool or uinput"""
+    """Linux implementation using xdotool or pynput."""
     
     def __init__(self):
-        # Try xdotool first (easier, no root required)
         self.use_xdotool = self._check_command('xdotool')
         
         if not self.use_xdotool:
-            # Try pynput as fallback
             try:
                 from pynput.keyboard import Key, Controller
                 self.use_pynput = True
@@ -329,10 +313,12 @@ class _LinuxKeyboard:
                 self.Key = Key
                 print("Warning: xdotool not found, using pynput (may require X11)")
             except ImportError:
-                raise RuntimeError("Linux requires either 'xdotool' (install: sudo apt install xdotool) or 'pynput'")
+                raise RuntimeError(
+                    "Linux requires either 'xdotool' (install: sudo apt install xdotool) or 'pynput'"
+                )
     
     def _check_command(self, cmd: str) -> bool:
-        """Check if a command is available"""
+        """Check if a command is available."""
         try:
             subprocess.run(['which', cmd], check=True, capture_output=True)
             return True
@@ -340,7 +326,7 @@ class _LinuxKeyboard:
             return False
     
     def _xdotool_key(self, key: str, press: bool = True):
-        """Send key using xdotool"""
+        """Send key using xdotool."""
         action = 'keydown' if press else 'keyup'
         key_map = {
             'ctrl': 'ctrl', 'shift': 'shift', 'alt': 'alt',
@@ -364,7 +350,7 @@ class _LinuxKeyboard:
             pass
     
     def _get_key_name(self, key: str):
-        """Convert key string to pynput Key or character"""
+        """Convert key string to pynput Key or character."""
         if hasattr(self, 'use_pynput') and self.use_pynput:
             key_map = {
                 'space': self.Key.space, 'enter': self.Key.enter, 'tab': self.Key.tab,
@@ -386,7 +372,7 @@ class _LinuxKeyboard:
         return None
     
     def press_key(self, key: str):
-        """Press a key"""
+        """Press a key."""
         if self.use_xdotool:
             self._xdotool_key(key, press=True)
         elif hasattr(self, 'use_pynput') and self.use_pynput:
@@ -399,7 +385,7 @@ class _LinuxKeyboard:
                         self.keyboard.press(key_obj)
     
     def release_key(self, key: str):
-        """Release a key"""
+        """Release a key."""
         if self.use_xdotool:
             self._xdotool_key(key, press=False)
         elif hasattr(self, 'use_pynput') and self.use_pynput:
@@ -412,13 +398,16 @@ class _LinuxKeyboard:
                         self.keyboard.release(key_obj)
     
     def press_combination(self, modifiers: list, key: Optional[str] = None):
-        """Press a key combination"""
+        """Press a key combination."""
         import time
         if self.use_xdotool:
             mod_str = '+'.join(modifiers)
             if key:
                 try:
-                    subprocess.run(['xdotool', 'key', f'{mod_str}+{key}'], check=True, capture_output=True)
+                    subprocess.run(
+                        ['xdotool', 'key', f'{mod_str}+{key}'], 
+                        check=True, capture_output=True
+                    )
                 except:
                     pass
             else:
@@ -445,4 +434,5 @@ class _LinuxKeyboard:
             for mod in reversed(mod_keys):
                 if mod:
                     self.keyboard.release(mod)
+
 
