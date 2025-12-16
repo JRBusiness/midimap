@@ -1,4 +1,5 @@
 # MidiMap
+<img width="1050" height="1082" alt="image" src="https://github.com/user-attachments/assets/caafecd2-6029-43e7-8144-50845a5bdb70" />
 
 A cross-platform desktop application that bridges MIDI input with computer keyboard output. Originally designed for rhythm game integration, MidiMap converts MIDI notes to keystrokes and includes AI-powered audio-to-MIDI transcription.
 
