@@ -511,7 +511,8 @@ class MIDIMapperGUI:
         # Set window background
         self.root.configure(bg=self.COLORS['bg_dark'])
         
-        self.config_path = Path("config.json")
+        from utils.resources import get_config_path
+        self.config_path = get_config_path()
         # Create mapper without loading config (we'll load profiles separately)
         # Import PlatformKeyboard from keyboard_backend
         from src.keyboard import PlatformKeyboard

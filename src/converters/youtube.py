@@ -68,8 +68,9 @@ class YouTubeConverter:
     def _get_ffmpeg_path(self) -> Optional[str]:
         """Get path to ffmpeg executable."""
         import subprocess
+        from utils.resources import get_ffmpeg_path
         
-        local_ffmpeg = Path(__file__).parent.parent.parent / "ffmpeg.exe"
+        local_ffmpeg = get_ffmpeg_path()
         if local_ffmpeg.exists():
             return str(local_ffmpeg.parent)
         
@@ -90,8 +91,9 @@ class YouTubeConverter:
     def is_ffmpeg_available(self) -> bool:
         """Check if ffmpeg is available."""
         import subprocess
+        from utils.resources import get_ffmpeg_path
         
-        local_ffmpeg = Path(__file__).parent.parent.parent / "ffmpeg.exe"
+        local_ffmpeg = get_ffmpeg_path()
         if local_ffmpeg.exists():
             return True
         

@@ -11,6 +11,8 @@ from typing import Optional, Callable, List, Tuple
 
 import numpy as np
 
+from utils.resources import get_model_path
+
 
 class AudioToMidiConverter:
     
@@ -21,7 +23,7 @@ class AudioToMidiConverter:
         self.converting = False
         self.progress_callback: Optional[Callable] = None
         self.log_callback: Optional[Callable] = None
-        self._model_path = Path(__file__).parent.parent.parent / "models" / "model.onnx"
+        self._model_path = get_model_path()
         self.last_error: Optional[str] = None
     
     def is_model_available(self) -> bool:

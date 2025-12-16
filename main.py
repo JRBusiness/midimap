@@ -12,6 +12,11 @@ import sys
 from src.mapper import MIDIToKeyboardMapper
 
 
+def is_bundled() -> bool:
+    """Check if running as a bundled executable."""
+    return getattr(sys, 'frozen', False)
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -19,7 +24,7 @@ def main():
     )
     parser.add_argument(
         '-c', '--config',
-        default='config.json',
+        default=None,
         help='Path to configuration file (default: config.json)'
     )
     parser.add_argument(
@@ -40,8 +45,17 @@ def main():
         action='store_true',
         help='Launch GUI application for interactive key mapping'
     )
+    parser.add_argument(
+        '--no-gui',
+        action='store_true',
+        help='Run in CLI mode (only for bundled exe)'
+    )
     
     args = parser.parse_args()
+    
+    # Auto-launch GUI when running as bundled exe (unless --no-gui is specified)
+    if is_bundled() and not args.no_gui and not args.list_ports:
+        args.gui = True
     
     if args.gui:
         try:

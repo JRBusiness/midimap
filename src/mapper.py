@@ -21,8 +21,12 @@ from src.keyboard import PlatformKeyboard
 class MIDIToKeyboardMapper:
     """Maps MIDI note events to keyboard key presses."""
     
-    def __init__(self, config_file: str = "config.json", profile_name: Optional[str] = None):
-        self.config_path = Path(config_file)
+    def __init__(self, config_file: str = None, profile_name: Optional[str] = None):
+        from utils.resources import get_config_path
+        if config_file:
+            self.config_path = Path(config_file)
+        else:
+            self.config_path = get_config_path()
         self.keyboard = PlatformKeyboard()
         self.midi_map: Dict[int, str] = {}
         self.active_notes: Dict[int, bool] = {}
