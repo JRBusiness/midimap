@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+src/__pycache__/
 # C extensions
 *.so
 
@@ -42,10 +42,11 @@ env/
 .DS_Store
 Thumbs.db
 Desktop.ini
-
-# Project specific
 downloads/
 midi_output/
+# Project specific
+downloads\
+midi_output\
 *.mid
 *.midi
 

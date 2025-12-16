@@ -664,7 +664,7 @@ class MIDIMapperGUI:
                        foreground=c['text'],
                        arrowcolor=c['text'],
                        bordercolor=c['border'])
-    
+        
     def setup_ui(self):
         """Create the user interface"""
         # Apply modern dark theme
@@ -878,19 +878,23 @@ class MIDIMapperGUI:
         
         self.play_btn = ttk.Button(playback_frame, text="Play", command=self.play_midi_file, width=10)
         self.play_btn.grid(row=0, column=0, padx=2)
+        self.test_play_btn = ttk.Button(playback_frame, text="Test & Play", command=self.test_and_play_midi, width=12)
+        self.test_play_btn.grid(row=0, column=1, padx=2)
         self.pause_btn = ttk.Button(playback_frame, text="Pause", command=self.pause_midi_file, width=10, state="disabled")
-        self.pause_btn.grid(row=0, column=1, padx=2)
+        self.pause_btn.grid(row=0, column=2, padx=2)
+        self.practice_btn = ttk.Button(playback_frame, text="Practice", command=self.practice_while_paused, width=10, state="disabled")
+        self.practice_btn.grid(row=0, column=3, padx=2)
         self.stop_btn = ttk.Button(playback_frame, text="Stop", command=self.stop_midi_file, width=10, state="disabled")
-        self.stop_btn.grid(row=0, column=2, padx=2)
+        self.stop_btn.grid(row=0, column=4, padx=2)
         
         # Speed control
-        ttk.Label(playback_frame, text="Speed:").grid(row=0, column=3, padx=(20, 5))
+        ttk.Label(playback_frame, text="Speed:").grid(row=0, column=5, padx=(20, 5))
         self.speed_var = tk.DoubleVar(value=1.0)
         self.speed_scale = ttk.Scale(playback_frame, from_=0.25, to=2.0, variable=self.speed_var, 
                                      orient=tk.HORIZONTAL, length=100, command=self.on_speed_changed)
-        self.speed_scale.grid(row=0, column=4, padx=2)
+        self.speed_scale.grid(row=0, column=6, padx=2)
         self.speed_label = ttk.Label(playback_frame, text="1.0x", width=5)
-        self.speed_label.grid(row=0, column=5, padx=2)
+        self.speed_label.grid(row=0, column=7, padx=2)
         
         # Current note display
         self.current_note_label = ttk.Label(player_frame, text="", foreground=self.COLORS['accent'])
@@ -938,6 +942,14 @@ class MIDIMapperGUI:
                                                width=3, command=self.on_misclick_changed)
         self.misclick_range_spin.grid(row=0, column=5, padx=2)
         ttk.Label(misclick_frame, text="notes").grid(row=0, column=6, padx=2)
+        
+        # Test duration setting
+        ttk.Label(misclick_frame, text="Test:").grid(row=0, column=7, padx=(15, 5))
+        self.test_duration_var = tk.IntVar(value=4)
+        self.test_duration_spin = ttk.Spinbox(misclick_frame, from_=1, to=15, textvariable=self.test_duration_var,
+                                              width=3)
+        self.test_duration_spin.grid(row=0, column=8, padx=2)
+        ttk.Label(misclick_frame, text="sec").grid(row=0, column=9, padx=2)
         
         # Note range info display
         self.note_range_label = ttk.Label(player_frame, text="", foreground=self.COLORS['text_dim'])
@@ -1872,23 +1884,325 @@ class MIDIMapperGUI:
         
         self.midi_player.play()
         self.play_btn.config(state="disabled")
+        self.test_play_btn.config(state="disabled")
         self.pause_btn.config(state="normal")
         self.stop_btn.config(state="normal")
+    
+    def test_and_play_midi(self):
+        """Play test notes, then a sample from middle, then start full playback"""
+        if not self.midi_player.events:
+            messagebox.showwarning("Warning", "Please load a MIDI file first")
+            return
+        
+        if not self.midi_map:
+            messagebox.showwarning("Warning", "Please assign some key mappings first")
+            return
+        
+        # Update the player's midi map
+        self.midi_player.update_midi_map(self.midi_map)
+        
+        # Disable buttons during test
+        self.play_btn.config(state="disabled")
+        self.test_play_btn.config(state="disabled")
+        self.pause_btn.config(state="disabled")
+        self.stop_btn.config(state="normal")
+        
+        self.current_note_label.config(text="Testing keys...")
+        
+        # Clear any previous cancellation flag
+        if hasattr(self, '_test_cancelled'):
+            delattr(self, '_test_cancelled')
+        
+        # Get test duration from UI
+        test_duration = self.test_duration_var.get()
+        
+        # Run test sequence in background thread
+        def run_test_sequence():
+            import random
+            
+            # Get mapped notes from the MIDI file
+            mapped_notes = []
+            for event_time, event_type, note in self.midi_player.events:
+                if event_type == 'on' and note in self.midi_map:
+                    if note not in mapped_notes:
+                        mapped_notes.append(note)
+            
+            if not mapped_notes:
+                self.root.after(0, lambda: self.current_note_label.config(text="No mapped notes found in MIDI"))
+                self.root.after(0, lambda: self._enable_play_buttons())
+                return
+            
+            # Phase 1: Play individual test notes (3-5 random notes)
+            self.root.after(0, lambda: self.current_note_label.config(text="Phase 1: Testing individual keys..."))
+            test_notes = random.sample(mapped_notes, min(5, len(mapped_notes)))
+            
+            for note in test_notes:
+                if hasattr(self, '_test_cancelled'):
+                    break
+                key = self.midi_map[note]
+                note_name = self.get_note_name(note)
+                self.root.after(0, lambda n=note, k=key, nn=note_name: self.current_note_label.config(
+                    text=f"Testing: Note {n} ({nn}) -> Key '{k}'"
+                ))
+                try:
+                    self.mapper.press_key(key)
+                    time.sleep(0.15)
+                    self.mapper.release_key(key)
+                    time.sleep(0.25)
+                except:
+                    pass
+            
+            if hasattr(self, '_test_cancelled'):
+                delattr(self, '_test_cancelled')
+                return
+            
+            time.sleep(0.5)
+            
+            # Phase 2: Play a short melody from the middle of the song
+            self.root.after(0, lambda: self.current_note_label.config(text="Phase 2: Playing sample from middle..."))
+            
+            # Find the middle section of the song
+            total_duration = self.midi_player.total_duration
+            middle_start = total_duration * 0.4  # Start at 40%
+            middle_end = total_duration * 0.5    # End at 50%
+            
+            # Get events from the middle section
+            middle_events = [
+                (t, typ, n) for t, typ, n in self.midi_player.events
+                if middle_start <= t <= middle_end and n in self.midi_map
+            ]
+            
+            if middle_events:
+                # Play up to test_duration seconds of the middle section
+                start_time_offset = middle_events[0][0] if middle_events else middle_start
+                active_notes = set()
+                
+                import time as time_module
+                playback_start = time_module.perf_counter()
+                
+                for event_time, event_type, note in middle_events:
+                    if hasattr(self, '_test_cancelled'):
+                        break
+                    
+                    # Wait for the right time (relative to start)
+                    relative_time = event_time - start_time_offset
+                    if relative_time > float(test_duration):  # Max test_duration seconds of sample
+                        break
+                    
+                    elapsed = time_module.perf_counter() - playback_start
+                    wait_time = relative_time - elapsed
+                    if wait_time > 0:
+                        time.sleep(wait_time)
+                    
+                    key = self.midi_map[note]
+                    try:
+                        if event_type == 'on':
+                            self.mapper.press_key(key)
+                            active_notes.add(note)
+                            note_name = self.get_note_name(note)
+                            self.root.after(0, lambda n=note, k=key, nn=note_name: self.current_note_label.config(
+                                text=f"Sample: Note {n} ({nn}) -> Key '{k}'"
+                            ))
+                        else:
+                            self.mapper.release_key(key)
+                            active_notes.discard(note)
+                    except:
+                        pass
+                
+                # Release any still-held notes
+                for note in active_notes:
+                    if note in self.midi_map:
+                        try:
+                            self.mapper.release_key(self.midi_map[note])
+                        except:
+                            pass
+            
+            if hasattr(self, '_test_cancelled'):
+                delattr(self, '_test_cancelled')
+                return
+            
+            time.sleep(0.8)
+            
+            # Phase 3: Start full playback
+            self.root.after(0, lambda: self.current_note_label.config(text="Starting full playback..."))
+            time.sleep(0.3)
+            
+            def start_playback():
+                self.midi_player.play()
+                self.pause_btn.config(state="normal")
+            
+            self.root.after(0, start_playback)
+        
+        # Start test sequence
+        threading.Thread(target=run_test_sequence, daemon=True).start()
+    
+    def _enable_play_buttons(self):
+        """Re-enable play buttons after test"""
+        self.play_btn.config(state="normal")
+        self.test_play_btn.config(state="normal")
+    
+    def practice_while_paused(self):
+        """Play test notes while paused to practice before resuming"""
+        if not self.midi_player.paused:
+            return
+        
+        if not self.midi_map:
+            messagebox.showwarning("Warning", "No key mappings available")
+            return
+        
+        # Disable practice button during practice
+        self.practice_btn.config(state="disabled")
+        self.pause_btn.config(state="disabled")
+        
+        # Get test duration
+        test_duration = self.test_duration_var.get()
+        
+        self.current_note_label.config(text="Practicing test notes...")
+        
+        def run_practice():
+            import random
+            
+            # Get mapped notes from the MIDI file
+            mapped_notes = []
+            for event_time, event_type, note in self.midi_player.events:
+                if event_type == 'on' and note in self.midi_map:
+                    if note not in mapped_notes:
+                        mapped_notes.append(note)
+            
+            if not mapped_notes:
+                # Fall back to all mapped notes
+                mapped_notes = list(self.midi_map.keys())
+            
+            if not mapped_notes:
+                self.root.after(0, lambda: self.current_note_label.config(text="No notes to practice"))
+                self.root.after(0, lambda: self._finish_practice())
+                return
+            
+            # Phase 1: Play a few individual test notes
+            self.root.after(0, lambda: self.current_note_label.config(text="Testing individual keys..."))
+            test_notes = random.sample(mapped_notes, min(4, len(mapped_notes)))
+            
+            for note in test_notes:
+                if hasattr(self, '_practice_cancelled'):
+                    break
+                key = self.midi_map[note]
+                note_name = self.get_note_name(note)
+                self.root.after(0, lambda n=note, k=key, nn=note_name: self.current_note_label.config(
+                    text=f"Practice: Note {n} ({nn}) -> Key '{k}'"
+                ))
+                try:
+                    self.mapper.press_key(key)
+                    time.sleep(0.15)
+                    self.mapper.release_key(key)
+                    time.sleep(0.2)
+                except:
+                    pass
+            
+            if hasattr(self, '_practice_cancelled'):
+                delattr(self, '_practice_cancelled')
+                self.root.after(0, lambda: self._finish_practice())
+                return
+            
+            time.sleep(0.3)
+            
+            # Phase 2: Play a short sample around current position
+            current_pos = self.midi_player.current_position
+            sample_start = max(0, current_pos - 2)  # 2 seconds before current position
+            sample_end = current_pos + float(test_duration)  # test_duration seconds after
+            
+            self.root.after(0, lambda: self.current_note_label.config(text="Playing sample around current position..."))
+            
+            # Get events around current position
+            nearby_events = [
+                (t, typ, n) for t, typ, n in self.midi_player.events
+                if sample_start <= t <= sample_end and n in self.midi_map
+            ]
+            
+            if nearby_events:
+                start_time_offset = nearby_events[0][0] if nearby_events else sample_start
+                active_notes = set()
+                
+                import time as time_module
+                playback_start = time_module.perf_counter()
+                
+                for event_time, event_type, note in nearby_events:
+                    if hasattr(self, '_practice_cancelled'):
+                        break
+                    
+                    relative_time = event_time - start_time_offset
+                    if relative_time > float(test_duration) + 2:  # Max duration
+                        break
+                    
+                    elapsed = time_module.perf_counter() - playback_start
+                    wait_time = relative_time - elapsed
+                    if wait_time > 0:
+                        time.sleep(wait_time)
+                    
+                    key = self.midi_map[note]
+                    try:
+                        if event_type == 'on':
+                            self.mapper.press_key(key)
+                            active_notes.add(note)
+                            note_name = self.get_note_name(note)
+                            self.root.after(0, lambda n=note, k=key, nn=note_name: self.current_note_label.config(
+                                text=f"Practice: Note {n} ({nn}) -> Key '{k}'"
+                            ))
+                        else:
+                            self.mapper.release_key(key)
+                            active_notes.discard(note)
+                    except:
+                        pass
+                
+                # Release held notes
+                for note in active_notes:
+                    if note in self.midi_map:
+                        try:
+                            self.mapper.release_key(self.midi_map[note])
+                        except:
+                            pass
+            
+            if hasattr(self, '_practice_cancelled'):
+                delattr(self, '_practice_cancelled')
+            
+            self.root.after(0, lambda: self._finish_practice())
+        
+        # Clear cancellation flag
+        if hasattr(self, '_practice_cancelled'):
+            delattr(self, '_practice_cancelled')
+        
+        threading.Thread(target=run_practice, daemon=True).start()
+    
+    def _finish_practice(self):
+        """Re-enable buttons after practice"""
+        if self.midi_player.paused:
+            self.practice_btn.config(state="normal")
+            self.pause_btn.config(state="normal")
+            self.current_note_label.config(text="Practice done - Click 'Resume' to continue playback")
     
     def pause_midi_file(self):
         """Pause/resume playback"""
         if self.midi_player.paused:
             self.midi_player.paused = False
             self.pause_btn.config(text="Pause")
+            self.practice_btn.config(state="disabled")
+            self.current_note_label.config(text="Resuming playback...")
         else:
             self.midi_player.pause()
             self.pause_btn.config(text="Resume")
+            self.practice_btn.config(state="normal")
+            self.current_note_label.config(text="Paused - Click 'Practice' to test notes, then 'Resume' to continue")
     
     def stop_midi_file(self):
         """Stop playback"""
+        # Cancel test/practice sequence if running
+        self._test_cancelled = True
+        self._practice_cancelled = True
+        
         self.midi_player.stop()
         self.play_btn.config(state="normal")
+        self.test_play_btn.config(state="normal")
         self.pause_btn.config(state="disabled", text="Pause")
+        self.practice_btn.config(state="disabled")
         self.stop_btn.config(state="disabled")
         self.progress_var.set(0)
         self.current_note_label.config(text="")
@@ -1957,7 +2271,9 @@ class MIDIMapperGUI:
             # Check if playback finished
             if current_time >= total_time:
                 self.play_btn.config(state="normal")
+                self.test_play_btn.config(state="normal")
                 self.pause_btn.config(state="disabled", text="Pause")
+                self.practice_btn.config(state="disabled")
                 self.stop_btn.config(state="disabled")
                 self.current_note_label.config(text="Playback finished")
         
